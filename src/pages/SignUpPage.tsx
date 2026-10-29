@@ -549,19 +549,6 @@ export const SignUpPage: React.FC = () => {
               </div>
             )}
 
-            {/* Owner Pre-notice */}
-            {activeRole === 'owner' && (
-              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
-                <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Owner Verification Notice</p>
-                  <p className="mt-0.5 text-amber-700 dark:text-amber-300">
-                    To maintain safety and equipment integrity, owner accounts undergo institutional verification before new resource listings go live.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Registration Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
               {/* Row 1: Full Name & Email */}

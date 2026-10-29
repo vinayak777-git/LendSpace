@@ -149,7 +149,11 @@ export const authService = {
       try {
         const body = await res.json();
         if (body.detail) {
-          errMsg = typeof body.detail === 'string' ? body.detail : errMsg;
+          if (typeof body.detail === 'string') {
+            errMsg = body.detail;
+          } else if (Array.isArray(body.detail)) {
+            errMsg = body.detail.map((e: any) => e.msg || e.message || String(e)).join(', ');
+          }
         }
       } catch {
         // use default message
