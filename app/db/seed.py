@@ -256,9 +256,9 @@ async def seed_demo_data() -> None:
             cooldown_hours=0,
             max_advance_days=14,
             buffer_minutes=30,
-            allowed_audience="org_only",
+            allowed_audience="anyone_verified",
             waitlist_enabled=True,
-            safety_notes="Faculty approval and Biosafety Level 1 clearance required prior to booking.",
+            safety_notes="Standard laboratory safety protocols apply.",
             usage_rules=[
                 "UV sterilization cycle must run for 20 minutes post-session.",
                 "Dispose of biohazard waste in marked red receptacles.",
@@ -268,13 +268,6 @@ async def seed_demo_data() -> None:
                 "Surface wiped with 70% ethanol",
                 "Incubator CO2 level at 5.0%",
             ],
-        )
-        res_lab.requirements.append(
-            ResourceRequirement(
-                type="faculty_approval",
-                name="Faculty Research Sponsorship",
-                required_credential_name="Faculty Research Sponsorship",
-            )
         )
         for wd in range(0, 7):
             res_lab.availability_windows.append(

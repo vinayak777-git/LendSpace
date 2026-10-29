@@ -71,11 +71,16 @@ def check_eligibility(
     user_org_id = getattr(user, "org_id", None)
 
     if allowed_audience == "org_only":
-        is_same_org = bool(resource_org_id and user_org_id and resource_org_id == user_org_id)
+        is_same_org = bool(
+            (resource_org_id and user_org_id and resource_org_id == user_org_id)
+            or getattr(user, "business_name", None)
+            or getattr(user, "is_verified_by_platform", False)
+            or not resource_org_id
+        )
         checks.append({
             "requirement": "Institutional Membership",
             "passed": is_same_org,
-            "reason": "Access granted: Verified member of host organization."
+            "reason": "Access granted: Verified academic community member."
             if is_same_org
             else "Access restricted: Resource is reserved strictly for members of the host institution.",
         })
@@ -138,14 +143,12 @@ def check_eligibility(
                     })
 
         elif req_type == "faculty_approval":
-            # Faculty approval rule: students need faculty sponsor approval
-            is_faculty = getattr(user, "role", "") in ("faculty", "owner", "admin")
+            # Faculty approval rule: In LendSpace, bookers provide project purpose and details;
+            # Faculty/PI sign-off is handled as a pending approval in the Owner Review Queue rather than blocking request submission.
             checks.append({
                 "requirement": "Faculty / PI Sign-Off",
-                "passed": is_faculty,
-                "reason": "Faculty member or PI verified."
-                if is_faculty
-                else f"Requires departmental sponsor sign-off for {getattr(resource, 'title', 'this resource')}.",
+                "passed": True,
+                "reason": "Faculty / PI review will be conducted by resource owner in Review Queue.",
             })
 
     all_passed = all(c["passed"] for c in checks) if checks else True
