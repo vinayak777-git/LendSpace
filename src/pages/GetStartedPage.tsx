@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { AppRole } from '../types';
+import { JadeSky } from '../components/ui/jade-sky';
 
 export const GetStartedPage: React.FC = () => {
   const navigate = useNavigate();
@@ -73,7 +74,8 @@ export const GetStartedPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col relative overflow-hidden transition-colors duration-300">
+      <JadeSky className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-15 -z-0" />
       {/* Minimal Header */}
       <header className="border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

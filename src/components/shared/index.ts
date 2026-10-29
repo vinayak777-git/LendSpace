@@ -6,3 +6,5 @@ export { ConfirmDialog } from './ConfirmDialog';
 export { Toast } from './Toast';
 export { DataTable } from './DataTable';
 export type { Column } from './DataTable';
+export { JadeSky, GradientBackground } from '../ui/jade-sky';
+export type { JadeSkyProps } from '../ui/jade-sky';

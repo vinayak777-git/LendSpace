@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
+import { JadeSky } from '../components/ui/jade-sky';
 import {
   Sparkles,
   ArrowRight,
@@ -225,6 +226,7 @@ export const LandingPage: React.FC = () => {
 
       {/* 2. HERO SECTION */}
       <section className="relative overflow-hidden py-16 sm:py-24 border-b border-slate-200/80 dark:border-slate-800/80">
+        <JadeSky className="absolute inset-0 pointer-events-none opacity-45 dark:opacity-20" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 dark:bg-emerald-500/5 blur-3xl rounded-full pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
