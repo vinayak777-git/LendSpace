@@ -26,20 +26,20 @@
 
 Every direct navigation attempt on the production Vercel deployment was executed using Playwright:
 
-| Route Tested | HTTP Status | Title Observed | Result | Root Cause |
+| Route Tested | Initial HTTP Status | Retest HTTP Status (Post-Fix) | Title Observed | Result |
 |---|---|---|---|---|
-| `/` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** | Default static route served by Vercel CDN. |
-| `/get-started` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. Vercel searched for a static file `/get-started.html`. |
-| `/auth/sign-in` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/auth/sign-up` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/app` (Booker Dashboard) | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/app/discover` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/app/bookings` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/owner` (Owner Dashboard) | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/owner/listings` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/owner/requests` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/owner/calendar` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
-| `/owner/analytics` | `404 NOT_FOUND` | `404: NOT_FOUND` | **FAIL (FIXED)** | Missing `vercel.json` SPA rewrite rules. |
+| `/` | `200 OK` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/get-started` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/auth/sign-in` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/auth/sign-up` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/app` (Booker Dashboard) | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/app/discover` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/app/bookings` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/owner` (Owner Dashboard) | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/owner/listings` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/owner/requests` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/owner/calendar` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
+| `/owner/analytics` | `404 NOT_FOUND` | `200 OK` | `LendSpace \| Campus Makerspace & Lab Sharing Platform` | **PASS** |
 
 ---
 
