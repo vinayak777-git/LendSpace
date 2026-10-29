@@ -44,3 +44,4 @@ export const JadeSky: React.FC<JadeSkyProps> = ({
 
 export const GradientBackground = JadeSky;
 export default JadeSky;
+

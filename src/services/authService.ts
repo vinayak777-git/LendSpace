@@ -323,9 +323,16 @@ export const authService = {
 
   async getCurrentUser(): Promise<AuthUser | null> {
     const token = this.getAccessToken();
+    const cached = localStorage.getItem(USER_KEY);
+    const cachedUser: AuthUser | null = cached ? JSON.parse(cached) : null;
+
     if (!token) {
-      const cached = localStorage.getItem(USER_KEY);
-      return cached ? JSON.parse(cached) : null;
+      return cachedUser;
+    }
+
+    // Local preview session active
+    if (token.startsWith('local_preview_token')) {
+      return cachedUser;
     }
 
     try {
@@ -340,19 +347,28 @@ export const authService = {
         return authUser;
       }
 
-      // Try refresh token if access token expired
-      return await this.refreshToken();
+      if (res.status === 404) {
+        // Backend not deployed here; retain local cached user session
+        return cachedUser;
+      }
+
+      if (res.status === 401) {
+        return await this.refreshToken();
+      }
+
+      return cachedUser;
     } catch {
-      const cached = localStorage.getItem(USER_KEY);
-      return cached ? JSON.parse(cached) : null;
+      return cachedUser;
     }
   },
 
   async refreshToken(): Promise<AuthUser | null> {
     const refresh_token = this.getRefreshToken();
-    if (!refresh_token) {
-      this.clearSession();
-      return null;
+    const cached = localStorage.getItem(USER_KEY);
+    const cachedUser: AuthUser | null = cached ? JSON.parse(cached) : null;
+
+    if (!refresh_token || refresh_token.startsWith('local_preview')) {
+      return cachedUser;
     }
 
     try {
@@ -363,6 +379,9 @@ export const authService = {
       });
 
       if (!res.ok) {
+        if (res.status === 404) {
+          return cachedUser;
+        }
         this.clearSession();
         return null;
       }
@@ -370,8 +389,7 @@ export const authService = {
       const data: TokenResponseData = await res.json();
       return this.setSession(data);
     } catch {
-      this.clearSession();
-      return null;
+      return cachedUser;
     }
   },
 
