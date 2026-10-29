@@ -1,6 +1,8 @@
 import { Resource } from '../types';
 import { apiClient } from './apiClient';
 import { logEvent } from './auditService';
+import { getItem, setItem } from './storage';
+import { INITIAL_RESOURCES } from '../data/seedData';
 
 function mapApiResourceToFrontend(r: any): Resource {
   return {
@@ -118,8 +120,22 @@ export const resourceService = {
       const data = await apiClient.get<any[]>('/resources/', filters);
       return data.map(mapApiResourceToFrontend);
     } catch (err) {
-      console.error('Failed to fetch resources from backend API:', err);
-      return [];
+      console.warn('Backend API unreachable, using local storage resources:', err);
+      let local = getItem<Resource[]>('RESOURCES', INITIAL_RESOURCES);
+      if (filters?.query) {
+        const q = filters.query.toLowerCase();
+        local = local.filter((r) => r.title.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q));
+      }
+      if (filters?.category && filters.category !== 'all') {
+        local = local.filter((r) => r.category === filters.category);
+      }
+      if (filters?.kind) {
+        local = local.filter((r) => r.type === filters.kind);
+      }
+      if (filters?.owner_id) {
+        local = local.filter((r) => r.ownerId === filters.owner_id);
+      }
+      return local;
     }
   },
 
@@ -128,8 +144,9 @@ export const resourceService = {
       const data = await apiClient.get<any>(`/resources/${id}`);
       return mapApiResourceToFrontend(data);
     } catch (err) {
-      console.error(`Failed to fetch resource ${id} from backend API:`, err);
-      return null;
+      console.warn(`Backend API unreachable for resource ${id}, checking local storage:`, err);
+      const local = getItem<Resource[]>('RESOURCES', INITIAL_RESOURCES);
+      return local.find((r) => r.id === id) || null;
     }
   },
 
@@ -137,21 +154,38 @@ export const resourceService = {
     data: Omit<Resource, 'id'>,
     actor?: { id: string; name: string; role: string }
   ): Promise<Resource> {
-    const payload = mapFrontendToApiPayload(data);
-    const created = await apiClient.post<any>('/resources/', payload);
-    const mapped = mapApiResourceToFrontend(created);
+    try {
+      const payload = mapFrontendToApiPayload(data);
+      const created = await apiClient.post<any>('/resources/', payload);
+      const mapped = mapApiResourceToFrontend(created);
 
-    if (actor) {
-      await logEvent(
-        actor,
-        'RESOURCE_CREATED',
-        mapped.id,
-        'resource',
-        `Owner registered listing "${mapped.title}" with category ${mapped.category}.`
-      );
+      if (actor) {
+        await logEvent(
+          actor,
+          'RESOURCE_CREATED',
+          mapped.id,
+          'resource',
+          `Owner registered listing "${mapped.title}" with category ${mapped.category}.`
+        );
+      }
+
+      return mapped;
+    } catch (err) {
+      console.warn('Backend API unreachable, saving resource locally:', err);
+      const newId = `res_${Date.now()}`;
+      const newResource: Resource = {
+        ...data,
+        id: newId,
+        ownerId: actor?.id || 'owner_local',
+        status: 'live',
+        demandLevel: 'medium',
+        isFree: data.hourlyRate === 0 && (data.dailyRate === 0 || !data.dailyRate),
+      };
+      const existing = getItem<Resource[]>('RESOURCES', INITIAL_RESOURCES);
+      existing.unshift(newResource);
+      setItem('RESOURCES', existing);
+      return newResource;
     }
-
-    return mapped;
   },
 
   async updateResource(

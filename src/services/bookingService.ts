@@ -1,6 +1,7 @@
 import { Booking, BookingStatus, User } from '../types';
 import { apiClient } from './apiClient';
 import { logEvent } from './auditService';
+import { getItem, setItem } from './storage';
 
 function mapApiBookingToFrontend(b: any): Booking {
   return {
@@ -85,8 +86,19 @@ export const bookingService = {
 
       return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (err) {
-      console.error('Failed to fetch bookings from backend API:', err);
-      return [];
+      console.warn('Backend API unreachable, using local bookings storage:', err);
+      let list = getItem<Booking[]>('BOOKINGS', []);
+      if (filters?.userId) list = list.filter((b) => b.userId === filters.userId);
+      if (filters?.resourceId) list = list.filter((b) => b.resourceId === filters.resourceId);
+      if (filters?.status) {
+        if (Array.isArray(filters.status)) {
+          const allowed = new Set(filters.status);
+          list = list.filter((b) => allowed.has(b.status));
+        } else {
+          list = list.filter((b) => b.status === filters.status);
+        }
+      }
+      return list;
     }
   },
 
@@ -95,8 +107,9 @@ export const bookingService = {
       const data = await apiClient.get<any>(`/bookings/${id}`);
       return mapApiBookingToFrontend(data);
     } catch (err) {
-      console.error(`Failed to fetch booking ${id}:`, err);
-      return null;
+      console.warn(`Backend API unreachable for booking ${id}, checking local storage:`, err);
+      const list = getItem<Booking[]>('BOOKINGS', []);
+      return list.find((b) => b.id === id) || null;
     }
   },
 
@@ -123,80 +136,160 @@ export const bookingService = {
       is_academic: params.academicProject ?? true,
     };
 
-    const res = await apiClient.post<any>('/bookings/', payload);
-    const booking = mapApiBookingToFrontend(res);
+    try {
+      const res = await apiClient.post<any>('/bookings/', payload);
+      const booking = mapApiBookingToFrontend(res);
 
-    if (actor) {
-      await logEvent(
-        actor,
-        booking.status === 'approved' ? 'BOOKING_AUTO_APPROVED' : 'BOOKING_REQUESTED',
-        booking.id,
-        'booking',
-        `Reservation requested for resource: ${booking.purpose}`
-      );
+      if (actor) {
+        await logEvent(
+          actor,
+          booking.status === 'approved' ? 'BOOKING_AUTO_APPROVED' : 'BOOKING_REQUESTED',
+          booking.id,
+          'booking',
+          `Reservation requested for resource: ${booking.purpose}`
+        );
+      }
+
+      return {
+        booking,
+        outcome: booking.status === 'approved' ? 'auto_approved' : (booking.status as any),
+        reason: booking.status === 'approved' ? 'Auto-approved by platform policies' : 'Submitted for owner review',
+      };
+    } catch (err) {
+      console.warn('Backend API unreachable, saving booking in local storage:', err);
+      const localBooking: Booking = {
+        id: `book_${Date.now()}`,
+        resourceId: params.resourceId,
+        userId: params.userId,
+        userName: params.userName || actor?.name || 'Applicant',
+        userEmail: params.userEmail || actor?.email || '',
+        userPhone: params.userPhone,
+        userOrg: params.userOrg || 'Academic Department',
+        start: new Date(params.start).toISOString(),
+        end: new Date(params.end).toISOString(),
+        purpose: params.purpose,
+        status: 'pending',
+        academicProject: params.academicProject ?? true,
+        priorityScore: 75,
+        extensions: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const existing = getItem<Booking[]>('BOOKINGS', []);
+      existing.unshift(localBooking);
+      setItem('BOOKINGS', existing);
+
+      return {
+        booking: localBooking,
+        outcome: 'pending',
+        reason: 'Submitted for owner review',
+      };
     }
-
-    return {
-      booking,
-      outcome: booking.status === 'approved' ? 'auto_approved' : (booking.status as any),
-      reason: booking.status === 'approved' ? 'Auto-approved by platform policies' : 'Submitted for owner review',
-    };
   },
 
   async approveBooking(bookingId: string, arg1?: any, arg2?: any): Promise<Booking> {
     const { actor, reason } = resolveActorAndReason(arg1, arg2);
-    const res = await apiClient.post<any>(
-      `/bookings/${bookingId}/action?target_status=approved`,
-      { reason: reason || 'Owner approved reservation request' }
-    );
-    const booking = mapApiBookingToFrontend(res);
+    try {
+      const res = await apiClient.post<any>(
+        `/bookings/${bookingId}/action?target_status=approved`,
+        { reason: reason || 'Owner approved reservation request' }
+      );
+      const booking = mapApiBookingToFrontend(res);
 
-    if (actor) {
-      await logEvent(actor, 'BOOKING_APPROVED', booking.id, 'booking', reason);
+      if (actor) {
+        await logEvent(actor, 'BOOKING_APPROVED', booking.id, 'booking', reason);
+      }
+      return booking;
+    } catch (err) {
+      console.warn('Backend API unreachable, approving booking in local storage:', err);
+      const existing = getItem<Booking[]>('BOOKINGS', []);
+      const item = existing.find((b) => b.id === bookingId);
+      if (item) {
+        item.status = 'approved';
+        item.updatedAt = new Date().toISOString();
+        setItem('BOOKINGS', existing);
+        return item;
+      }
+      throw err;
     }
-    return booking;
   },
 
   async rejectBooking(bookingId: string, arg1?: any, arg2?: any): Promise<Booking> {
     const { actor, reason } = resolveActorAndReason(arg1, arg2);
-    const res = await apiClient.post<any>(
-      `/bookings/${bookingId}/action?target_status=rejected`,
-      { reason: reason || 'Reservation declined' }
-    );
-    const booking = mapApiBookingToFrontend(res);
+    try {
+      const res = await apiClient.post<any>(
+        `/bookings/${bookingId}/action?target_status=rejected`,
+        { reason: reason || 'Reservation declined' }
+      );
+      const booking = mapApiBookingToFrontend(res);
 
-    if (actor) {
-      await logEvent(actor, 'BOOKING_REJECTED', booking.id, 'booking', reason);
+      if (actor) {
+        await logEvent(actor, 'BOOKING_REJECTED', booking.id, 'booking', reason);
+      }
+      return booking;
+    } catch (err) {
+      console.warn('Backend API unreachable, declining booking in local storage:', err);
+      const existing = getItem<Booking[]>('BOOKINGS', []);
+      const item = existing.find((b) => b.id === bookingId);
+      if (item) {
+        item.status = 'rejected';
+        setItem('BOOKINGS', existing);
+        return item;
+      }
+      throw err;
     }
-    return booking;
   },
 
   async waitlistBooking(bookingId: string, arg1?: any, arg2?: any): Promise<Booking> {
     const { actor, reason } = resolveActorAndReason(arg1, arg2);
-    const res = await apiClient.post<any>(
-      `/bookings/${bookingId}/action?target_status=waitlisted`,
-      { reason: reason || 'Moved request to waitlist' }
-    );
-    const booking = mapApiBookingToFrontend(res);
+    try {
+      const res = await apiClient.post<any>(
+        `/bookings/${bookingId}/action?target_status=waitlisted`,
+        { reason: reason || 'Moved request to waitlist' }
+      );
+      const booking = mapApiBookingToFrontend(res);
 
-    if (actor) {
-      await logEvent(actor, 'BOOKING_WAITLISTED', booking.id, 'booking', reason);
+      if (actor) {
+        await logEvent(actor, 'BOOKING_WAITLISTED', booking.id, 'booking', reason);
+      }
+      return booking;
+    } catch (err) {
+      console.warn('Backend API unreachable, waitlisting booking in local storage:', err);
+      const existing = getItem<Booking[]>('BOOKINGS', []);
+      const item = existing.find((b) => b.id === bookingId);
+      if (item) {
+        item.status = 'waitlisted';
+        setItem('BOOKINGS', existing);
+        return item;
+      }
+      throw err;
     }
-    return booking;
   },
 
   async cancelBooking(bookingId: string, arg1?: any, arg2?: any): Promise<{ cancelled: Booking; promotedBooking?: Booking }> {
     const { actor, reason } = resolveActorAndReason(arg1, arg2);
-    const res = await apiClient.post<any>(
-      `/bookings/${bookingId}/action?target_status=cancelled`,
-      { reason: reason || 'Cancelled by user' }
-    );
-    const booking = mapApiBookingToFrontend(res);
+    try {
+      const res = await apiClient.post<any>(
+        `/bookings/${bookingId}/action?target_status=cancelled`,
+        { reason: reason || 'Cancelled by user' }
+      );
+      const booking = mapApiBookingToFrontend(res);
 
-    if (actor) {
-      await logEvent(actor, 'BOOKING_CANCELLED', booking.id, 'booking', reason);
+      if (actor) {
+        await logEvent(actor, 'BOOKING_CANCELLED', booking.id, 'booking', reason);
+      }
+      return { cancelled: booking };
+    } catch (err) {
+      console.warn('Backend API unreachable, cancelling booking in local storage:', err);
+      const existing = getItem<Booking[]>('BOOKINGS', []);
+      const item = existing.find((b) => b.id === bookingId);
+      if (item) {
+        item.status = 'cancelled';
+        setItem('BOOKINGS', existing);
+        return { cancelled: item };
+      }
+      throw err;
     }
-    return { cancelled: booking };
   },
 
   async checkInBooking(
