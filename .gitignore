@@ -44,5 +44,6 @@ backups/
 # Outbox & Uploads
 outbox/
 uploads/
+test-artifacts/
 .coverage
 

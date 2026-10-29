@@ -4,7 +4,15 @@
  */
 
 const TOKEN_KEY = 'lendspace_access_token_v1';
-const API_BASE = '/api/v1';
+const getApiBase = (): string => {
+  const envUrl = (import.meta as any).env?.VITE_API_URL || (import.meta as any).env?.VITE_API_BASE_URL;
+  if (envUrl) {
+    const clean = String(envUrl).replace(/\/$/, '');
+    return clean.endsWith('/api/v1') ? clean : `${clean}/api/v1`;
+  }
+  return '/api/v1';
+};
+const API_BASE = getApiBase();
 
 export class ApiError extends Error {
   status: number;
