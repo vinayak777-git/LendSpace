@@ -56,11 +56,14 @@ export const apiClient = {
       let errorMessage = `Request failed with status ${response.status}`;
       let errorData = null;
       try {
-        errorData = await response.json();
-        if (errorData.detail) {
-          errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
+        const ct = response.headers.get('content-type');
+        if (ct && ct.includes('application/json')) {
+          errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
         }
       } catch {
         // use default message
@@ -70,6 +73,11 @@ export const apiClient = {
 
     if (response.status === 204) {
       return null as T;
+    }
+
+    const ct = response.headers.get('content-type');
+    if (ct && !ct.includes('application/json')) {
+      throw new ApiError('Expected JSON response from backend API, received non-JSON payload.', response.status);
     }
 
     return response.json() as Promise<T>;
