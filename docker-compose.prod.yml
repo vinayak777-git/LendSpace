@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lendspace_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lendspace_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lendspace_production_pass_secure}
+      POSTGRES_DB: ${POSTGRES_DB:-lendspace}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lendspace_app} -d ${POSTGRES_DB:-lendspace}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.20"
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lendspace_api_prod
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PROJECT_NAME: "LendSpace Production API"
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-lendspace_app}:${POSTGRES_PASSWORD:-lendspace_production_pass_secure}@db:5432/${POSTGRES_DB:-lendspace}"
+      SECRET_KEY: "${SECRET_KEY:-production-lendspace-auth-signing-key-32chars-min}"
+      BACKEND_CORS_ORIGINS: '["http://localhost", "http://127.0.0.1", "http://localhost:80"]'
+      UPLOAD_DIR: "/app/uploads"
+      OUTBOX_DIR: "/app/outbox"
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_prod_uploads:/app/uploads
+      - app_prod_outbox:/app/outbox
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+        reservations:
+          cpus: "0.30"
+          memory: 384M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_prod_data:
+  app_prod_uploads:
+  app_prod_outbox:
+

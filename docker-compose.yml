@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lendspace_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lendspace}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lendspace_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-lendspace_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lendspace} -d ${POSTGRES_DB:-lendspace_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lendspace_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PROJECT_NAME: "LendSpace API"
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-lendspace}:${POSTGRES_PASSWORD:-lendspace_secret}@db:5432/${POSTGRES_DB:-lendspace_db}"
+      SECRET_KEY: "${SECRET_KEY:-production-super-secret-key-min-32-characters}"
+      BACKEND_CORS_ORIGINS: '["http://localhost:5173", "http://127.0.0.1:5173"]'
+      UPLOAD_DIR: "/app/uploads"
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_uploads:/app/uploads
+
+volumes:
+  postgres_data:
+  app_uploads:

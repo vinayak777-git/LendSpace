@@ -1,0 +1,22 @@
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501", # line too long (handled by formatter)
+    "B008", # do not perform function calls in argument defaults (needed for FastAPI Depends)
+    "B904", # raise ... from err
+]
+
+[lint.isort]
+combine-as-imports = true
+order-by-type = true
